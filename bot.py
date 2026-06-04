@@ -119,7 +119,7 @@ async def ai_ask(interaction: discord.Interaction, message: str):
     # Get last 20 messages for context
     context = await get_recent_messages(interaction.channel, limit=20)
 
-    prompt = f"User {interaction.user.display_name} asks: {message}"
+    prompt = f"User {interaction.user.display_name} asks you this dumb question: '{message}'. Answer them, but make sure to insult their intelligence for asking it while you do."
     response = await call_ai(prompt, context)
 
     await interaction.followup.send(response)
@@ -131,7 +131,7 @@ async def ai_roast(interaction: discord.Interaction, user: discord.Member):
 
     context = await get_recent_messages(interaction.channel, limit=20)
 
-    prompt = f"Roast the absolute shit out of {user.display_name}. Make it hurt, but remember you're Billy."
+    prompt = f"Roast the absolute shit out of {user.display_name}. Use the context of the recent conversation if it helps to make it deeply personal and painful. Don't hold back."
     response = await call_ai(prompt, context)
 
     await interaction.followup.send(f"{user.mention} {response}")
@@ -142,7 +142,7 @@ async def ai_read(interaction: discord.Interaction):
 
     context = await get_recent_messages(interaction.channel, limit=30)
 
-    prompt = "Read the recent chat context provided and summarize what these idiots are talking about. Add your own rude commentary."
+    prompt = "Read the recent chat context provided and summarize what these absolute morons are talking about. Condense it, mock them for caring about it, and throw in your own toxic commentary."
     response = await call_ai(prompt, context)
 
     await interaction.followup.send(response)
