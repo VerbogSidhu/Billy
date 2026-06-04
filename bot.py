@@ -29,34 +29,35 @@ async def call_ai(prompt: str, context_messages: list = None):
     # Constructing the conversation context
     contents = []
 
-    # System prompt as the first message
-    contents.append({
-        "role": "user",
+    # In Gemini API, roles MUST alternate between user and model.
+    # It is best to use systemInstruction for system prompts in v1beta.
+
+    system_instruction = {
         "parts": [{"text": f"SYSTEM INSTRUCTIONS (STRICTLY FOLLOW THESE):\n{BILLY_PERSONALITY}\n\nNow, respond to the following."}]
-    })
+    }
 
     # Add context history if provided
     if context_messages:
-        context_str = "\\n".join([f"{msg['author']}: {msg['content']}" for msg in context_messages])
+        context_str = "\n".join([f"{msg['author']}: {msg['content']}" for msg in context_messages])
         contents.append({
             "role": "user",
-            "parts": [{"text": f"Recent chat context:\\n{context_str}"}]
+            "parts": [{"text": f"Recent chat context:\n{context_str}\n\nNow, handle this prompt:\n{prompt}"}]
         })
+    else:
+        # The actual prompt
         contents.append({
-            "role": "model",
-            "parts": [{"text": "Got it. I've read the recent context. Now what do you want?"}]
+            "role": "user",
+            "parts": [{"text": prompt}]
         })
-
-    # The actual prompt
-    contents.append({
-        "role": "user",
-        "parts": [{"text": prompt}]
-    })
 
     payload = {
+        "systemInstruction": system_instruction,
         "contents": contents,
         "generationConfig": {
             "temperature": 0.9,
+            "thinkingConfig": {
+                "thinkingLevel": "MINIMAL" # Workaround for gemma 4 thoughts generating even when false
+            }
         }
     }
 
@@ -70,7 +71,15 @@ async def call_ai(prompt: str, context_messages: list = None):
 
                 data = await response.json()
                 try:
-                    return data['candidates'][0]['content']['parts'][0]['text']
+                    # Get the parts list
+                    parts = data['candidates'][0]['content']['parts']
+
+                    # Filter out parts that have "thought": true, and just join the text parts
+                    text_parts = [part['text'] for part in parts if not part.get('thought', False)]
+
+                    if text_parts:
+                         return "".join(text_parts).strip()
+                    return "AI didn't say anything useful."
                 except (KeyError, IndexError) as e:
                     print(f"Error parsing JSON: {data}")
                     return "What the fuck did you just give me? The JSON is mangled."
@@ -159,7 +168,7 @@ async def poll(interaction: discord.Interaction, question: str, option1: str, op
 
     msg_content = f"{intro}\n\n{poll_text}"
 
-    message = await interaction.followup.send(msg_content)
+    message = await interaction.followup.send(msg_content, wait=True)
 
     for i in range(len(options)):
         await message.add_reaction(emojis[i])
